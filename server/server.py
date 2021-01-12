@@ -231,7 +231,7 @@ def download_newest(username, db_logic):
 @app.get('/logout')
 def logout():
     #bottle.response.delete_cookie('login')
-    delete_cookie = ['login']
+    delete_cookie = ['login', 'isAdmin']
     return redirect_with_cookies('/', clear_cookies=delete_cookie)
 
 
