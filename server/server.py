@@ -4,6 +4,7 @@ import logging
 import os
 import srvcfg
 
+import config
 import helpers
 
 
@@ -44,7 +45,7 @@ def login_required(function):
     @functools.wraps(function)
     def decorated(db_logic, *args, **kwargs):
 
-        login_cookie = bottle.request.get_cookie('login')
+        login_cookie = bottle.request.get_cookie(login_cookie_name())
 
         login = db_logic.validate_login(login_cookie)
         if not login:
@@ -52,13 +53,19 @@ def login_required(function):
         return function(login, db_logic, *args, **kwargs)
     return decorated
 
+def admin_cookie_name():
+    return config.get()['admin_cookie']
+
+def login_cookie_name():
+    return config.get()['login_cookie']
+
 def admin_cookie(username):
     return username+'Yes'
 
 def is_admin(username):
     if srvcfg.CTF_DIFFICULTY == 1:
             return True
-    return bottle.request.get_cookie('isAdmin')==admin_cookie(username)
+    return bottle.request.get_cookie(admin_cookie_name())==admin_cookie(username)
 
 def get_is_admin_str(username):
     is_approved_admin = is_admin(username)
@@ -104,9 +111,7 @@ def view_admin_page(username, db_logic):
         if db_logic.admin_login(
             bottle.request.POST.get('password'),
         ):
-            # also here cookie should be sent using bottle.response.set_cookie('login', cookie)
-            # but redirect in jquery doesn't work
-            cookies_ = [('isAdmin',admin_cookie(username))]
+            cookies_ = [(admin_cookie_name(), admin_cookie(username))]
         return helpers.redirect_with_cookies('/', add_cookies=cookies_)
 
 
@@ -119,8 +124,7 @@ def login(db_logic):
     )
     cookies_=None
     if ok:
-        bottle.response.set_cookie('login', cookie) # doesn't work - need to redirect at jquery
-        cookies_=[('login',cookie)]
+        cookies_=[(login_cookie_name(),cookie)]
 #    return bottle.HTTPResponse(status=200, body="you logged in you will be redirected")
 
 #    return "you logged in you will be redirected"
@@ -151,8 +155,7 @@ def download_newest(username, db_logic):
 
 @app.get('/logout')
 def logout():
-    #bottle.response.delete_cookie('login')
-    delete_cookie = ['login', 'isAdmin']
+    delete_cookie = [login_cookie_name(), admin_cookie_name()]
     return helpers.redirect_with_cookies('/', clear_cookies=delete_cookie)
 
 

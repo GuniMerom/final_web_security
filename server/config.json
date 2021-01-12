@@ -1,0 +1,4 @@
+{
+    "login_cookie": "login",
+    "admin_cookie": "isAdmin"
+}

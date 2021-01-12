@@ -6,7 +6,8 @@ import srvcfg
 CONFIG_ = None
 LAST_LOAD_ = None
 DEFAULT_CONFIG_ = {
-    'Example': True
+    'login_cookie': 'login',
+    'admin_cookie': 'isAdmin',
 }
 
 
