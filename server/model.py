@@ -3,9 +3,6 @@ import contextlib
 import hashlib
 import sqlite3
 import time
-import bottle
-import srvcfg
-
 
 
 def sha1(val):
@@ -75,18 +72,17 @@ class DBLogic:
         match = None
         had_error = False
         bad_token_str = ''
-        ##DOC## Important - this must be a single line
+        ##DOC## Important - this must be a single line to show the query
+        ##DOC## in the stacktrace!
+        ##DOC## To perform an SQLI, do `') OR 1=1 ; --`
         match = self.select_scalar("SELECT * FROM users where username = 'admin' AND password = sha1('%s')"%(password,))
         return True if match else False
 
     def validate_login(self, cookie):
-        #logger.warning('This is only a test')
-
         if not cookie:
             return False
         try:
             # b64decode returns bytes, another decode to get a string
-            #print("cookie: {}".format(cookie))
             login = base64.b64decode(cookie).decode()
 
         except:

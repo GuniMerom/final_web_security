@@ -168,6 +168,7 @@ def get_stats(username, db_logic):
 
 # logic to prevent path traversal 
 def is_filename_safe(fname):
+    ##DOC## Path traversal with `foo/../<TRAVERSE_HERE>`
     if fname[0:2] == ".." or fname[0:4] == "./..":
         return False
     return True
