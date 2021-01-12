@@ -12,6 +12,13 @@ body {
     color: #f8f9fa
 }
 
+pre {
+    background: #444a50;
+    color: #f8f9fa;
+    border: 1px solid black;
+    padding: 15px 20px;
+}
+
 mark {
     background: #d1eef2
 }

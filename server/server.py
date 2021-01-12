@@ -11,7 +11,7 @@ import model
 import srvcfg
 import glob
 import urllib.parse
-
+import traceback
 
 
 from functools import wraps
@@ -167,22 +167,31 @@ def not_admin_required(function):
 def view_admin_page(username, db_logic):
 	return bottle.template('enable_admin')
 
+def debug_wrapper(func):
+    @functools.wraps(func)
+    def result(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        # Bottle returns all responses via Exceptions. Yuck :(
+        except bottle.HTTPResponse:
+            raise
+        # Format real exceptions.
+        except Exception as e:
+            if srvcfg.CTF_DIFFICULTY == 4:
+                raise Exception(query)
+            trace = traceback.format_exc()
+            return bottle.template('error', title=type(e).__name__, value=trace)
+    return result
+
 @app.post('/enable_admin')
 @not_admin_required
+@debug_wrapper
 def view_admin_page(username, db_logic):
         cookies_ = None
 
-        ok, had_error, query, bad_token_str = db_logic.admin_login(
+        if db_logic.admin_login(
             bottle.request.POST.get('password'),
-        )
-        if had_error:
-            if srvcfg.CTF_DIFFICULTY == 2:
-                return bottle.template('generic_str', str_=query)
-            if srvcfg.CTF_DIFFICULTY == 3:
-                return bottle.template('generic_str', str_=bad_token_str)
-            if srvcfg.CTF_DIFFICULTY == 4:
-                raise Exception(query)
-        if ok:
+        ):
             # also here cookie should be sent using bottle.response.set_cookie('login', cookie)
             # but redirect in jquery doesn't work
             cookies_ = [('isAdmin',admin_cookie(username))]

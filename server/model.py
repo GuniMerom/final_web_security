@@ -75,17 +75,9 @@ class DBLogic:
         match = None
         had_error = False
         bad_token_str = ''
-        query = "SELECT * FROM users where username = 'admin' AND password = sha1('%s')"%(password,)
-        print("Admin login query: %s" % query)
-        try:
-            match = self.select_scalar(query)
-        except sqlite3.OperationalError as e:
-            print("raised exception: %s" % e)
-            had_error = True
-            bad_token_str = "%s" % e
-
-        status = True if match else False
-        return status, had_error, query, bad_token_str
+        ##DOC## Important - this must be a single line
+        match = self.select_scalar("SELECT * FROM users where username = 'admin' AND password = sha1('%s')"%(password,))
+        return True if match else False
 
     def validate_login(self, cookie):
         #logger.warning('This is only a test')
