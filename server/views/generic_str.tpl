@@ -15,9 +15,7 @@
 
   <br>
   <br>
-  <!-- if you want it to be stylized correctly, uncomment the following line and comment the next one-->
-  <!-- <p><span style="white-space: pre-line">{{str_}}</span></p> -->
-  <p>{{str_}}</p>
+  <pre>{{str_}}</pre>
   
   </div>
 </body>
