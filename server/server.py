@@ -1,25 +1,10 @@
 import bottle
-import datetime
 import functools
-import html.parser
-import json
-import os
-import re
-import time
-import base64
-import model
-import srvcfg
-import glob
-import urllib.parse
-import traceback
-
-
-from functools import wraps
 import logging
+import os
+import srvcfg
 
-
-
-
+import helpers
 
 
 ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -31,8 +16,6 @@ LOG_FILE_BASENAME = 'myapp.log'
 LOG_FILE = os.path.join(ROOT_DIR, LOG_FILE_BASENAME)
 ADMIN_USERNAME = 'admin'
 
-
-
 # set up the logger
 logger = logging.getLogger('myapp')
 logger.setLevel(logging.INFO)
@@ -42,68 +25,13 @@ file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
-
-def redirect_with_cookies(url, code=None, add_cookies=None, clear_cookies=None):
-    if not code:
-        code = 303 if bottle.request.get('SERVER_PROTOCOL') == "HTTP/1.1" else 302
-    res = bottle.response.copy(cls=bottle.HTTPResponse)
-    for cookie in (add_cookies or ()):
-        name, val = cookie
-        res.set_cookie(name, val)
-    for cookie in (clear_cookies or ()):
-        res.delete_cookie(cookie)
-    res.status = code
-    res.body = ""
-    res.set_header('Location', urllib.parse.urljoin(bottle.request.url, url))
-    raise res
-
-def log_to_logger(fn):
-    '''
-    Wrap a Bottle request so that a log line is emitted after it's handled.
-    (This decorator can be extended to take the desired logger as a param.)
-    '''
-    @wraps(fn)
-    def _log_to_logger(*args, **kwargs):
-        request_time = datetime.datetime.now()
-        actual_response = fn(*args, **kwargs)
-        request = bottle.request
-        response = bottle.response
-        # modify this to log exactly what you need:
-        logger.info('%s %s %s %s %s' % (request.remote_addr,
-                                        request_time,
-                                        request.method,
-                                        request.url,
-                                        response.status))
-        logger.info('Cookies: %s' % request.get_cookie('login'))
-        logger.info('Handeled by: \'%s\' in file: \'%s\'' %(fn.__name__, SCRIPT_NAME))
-
-        return actual_response
-    return _log_to_logger
-
-
-
 # init upload folder
 if not os.path.exists(UPLOAD_DIR):
 	os.makedirs(UPLOAD_DIR)
 
 app = bottle.Bottle()
 bottle.TEMPLATE_PATH.append(os.path.join(ROOT_DIR, 'views'))
-app.install(log_to_logger)
-
-
-
-def db_required(function):
-    """
-    Make the database connection available to the function as its first
-    parameter.
-    """
-    @functools.wraps(function)
-    def decorated(*args, **kwargs):
-        with model.connect(DB_PATH) as connection:
-            db_logic = model.DBLogic(connection)
-            db_logic.initialize_db()
-            return function(db_logic, *args, **kwargs)
-    return decorated
+app.install(helpers.make_app_logger(logger, __file__))
 
 
 def login_required(function):
@@ -112,7 +40,7 @@ def login_required(function):
     Additionally, make the username and database connection available to the
     function as its first two parameters.
     """
-    @db_required
+    @helpers.db_required(DB_PATH)
     @functools.wraps(function)
     def decorated(db_logic, *args, **kwargs):
 
@@ -167,25 +95,9 @@ def not_admin_required(function):
 def view_admin_page(username, db_logic):
 	return bottle.template('enable_admin')
 
-def debug_wrapper(func):
-    @functools.wraps(func)
-    def result(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        # Bottle returns all responses via Exceptions. Yuck :(
-        except bottle.HTTPResponse:
-            raise
-        # Format real exceptions.
-        except Exception as e:
-            if srvcfg.CTF_DIFFICULTY == 4:
-                raise Exception(query)
-            trace = traceback.format_exc()
-            return bottle.template('error', title=type(e).__name__, value=trace)
-    return result
-
 @app.post('/enable_admin')
 @not_admin_required
-@debug_wrapper
+@helpers.debug_wrapper
 def view_admin_page(username, db_logic):
         cookies_ = None
 
@@ -195,11 +107,11 @@ def view_admin_page(username, db_logic):
             # also here cookie should be sent using bottle.response.set_cookie('login', cookie)
             # but redirect in jquery doesn't work
             cookies_ = [('isAdmin',admin_cookie(username))]
-        return redirect_with_cookies('/', add_cookies=cookies_)
+        return helpers.redirect_with_cookies('/', add_cookies=cookies_)
 
 
 @app.post('/login')
-@db_required
+@helpers.db_required(DB_PATH)
 def login(db_logic):
     ok, cookie = db_logic.login(
         bottle.request.POST.get('username'),
@@ -213,7 +125,7 @@ def login(db_logic):
 
 #    return "you logged in you will be redirected"
 #    return index(bottle.request.POST.get('username'),db_logic)
-    return redirect_with_cookies('/', add_cookies=cookies_)
+    return helpers.redirect_with_cookies('/', add_cookies=cookies_)
 
 @app.get('/display')
 @admin_required
@@ -241,12 +153,7 @@ def download_newest(username, db_logic):
 def logout():
     #bottle.response.delete_cookie('login')
     delete_cookie = ['login', 'isAdmin']
-    return redirect_with_cookies('/', clear_cookies=delete_cookie)
-
-
-def format_timestamp(timestamp):
-    date = datetime.datetime.fromtimestamp(int(timestamp))
-    return date.strftime('%d.%m.%Y %H:%M:%S')
+    return helpers.redirect_with_cookies('/', clear_cookies=delete_cookie)
 
 
 @app.get('/stats')
