@@ -2,6 +2,7 @@ import bottle
 import datetime
 import functools
 import model
+import os
 import srvcfg
 import urllib.parse
 import traceback
@@ -23,8 +24,6 @@ def redirect_with_cookies(url, code=None, add_cookies=None, clear_cookies=None):
 
 
 def make_app_logger(logger, filename):
-    ##DOC## Important - don't put this in the root, to make eval() harder
-    import os
     SCRIPT_NAME = os.path.split(filename)[1]
     def decorator(fn):
         '''
