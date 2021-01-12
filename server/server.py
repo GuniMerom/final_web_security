@@ -10,7 +10,7 @@ import base64
 import model
 import srvcfg
 import glob
-
+import urllib.parse
 
 
 
@@ -41,6 +41,21 @@ formatter = logging.Formatter('%(msg)s')
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
+
+
+def redirect_with_cookies(url, code=None, add_cookies=None, clear_cookies=None):
+    if not code:
+        code = 303 if bottle.request.get('SERVER_PROTOCOL') == "HTTP/1.1" else 302
+    res = bottle.response.copy(cls=bottle.HTTPResponse)
+    for cookie in (add_cookies or ()):
+        name, val = cookie
+        res.set_cookie(name, val)
+    for cookie in (clear_cookies or ()):
+        res.delete_cookie(cookie)
+    res.status = code
+    res.body = ""
+    res.set_header('Location', urllib.parse.urljoin(bottle.request.url, url))
+    raise res
 
 def log_to_logger(fn):
     '''
@@ -171,7 +186,7 @@ def view_admin_page(username, db_logic):
             # also here cookie should be sent using bottle.response.set_cookie('login', cookie)
             # but redirect in jquery doesn't work
             cookies_ = [('isAdmin',admin_cookie(username))]
-        return bottle.redirect('/', add_cookies=cookies_)
+        return redirect_with_cookies('/', add_cookies=cookies_)
 
 
 @app.post('/login')
@@ -189,7 +204,7 @@ def login(db_logic):
 
 #    return "you logged in you will be redirected"
 #    return index(bottle.request.POST.get('username'),db_logic)
-    return bottle.redirect('/', add_cookies=cookies_)
+    return redirect_with_cookies('/', add_cookies=cookies_)
 
 @app.get('/display')
 @admin_required
@@ -217,7 +232,7 @@ def download_newest(username, db_logic):
 def logout():
     #bottle.response.delete_cookie('login')
     delete_cookie = ['login']
-    return bottle.redirect('/', clear_cookies=delete_cookie)
+    return redirect_with_cookies('/', clear_cookies=delete_cookie)
 
 
 def format_timestamp(timestamp):
