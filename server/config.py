@@ -1,5 +1,6 @@
 import datetime
 import json
+import srvcfg
 
 
 CONFIG_ = None
@@ -14,15 +15,12 @@ def maybe_reload_(path):
     global LAST_LOAD_
     try:
         if not os.path.isfile(path):
-            print('No config file')
             return
         ts = os.stat(path).st_mtime
         if LAST_LOAD_ is None or ts > LAST_LOAD_:
-            print('Fresh time, reloading')
             LAST_LOAD_ = ts
             reload_(path)
     except:
-        print('Exception')
         pass
 
 
@@ -35,15 +33,23 @@ def get():
     return result
 
 
-def config_path_():
-    import os
-    return os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        'config.json')
-
 def reload_(path):
     global CONFIG_
-    print('New timestamp %s' % LAST_LOAD_)
     with open(path, 'r') as f:
         CONFIG_ = eval(f.read())
-    print(f'Reloaded config - {json.dumps(CONFIG_)}')
+
+
+##DOC## Intentionally have os in the scope for eval in low levels.
+##DOC## In tougher levels, don't have OS available.
+##DOC## Hide this by supposedly changing a function, to not have a big if around
+##DOC## an import statement (that's a big bad hint).
+if srvcfg.CTF_DIFFICULTY < 4:
+    import os
+    def config_path_():
+        return os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'config.json')
+else:
+    def config_path_():
+        return 'config.json'
+
