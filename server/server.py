@@ -201,7 +201,7 @@ def do_upload(context):
     upload = request.files.get('upload')
 
     suffix = file_name_suffix(upload.filename)
-    if suffix and suffix not in ('.prv', '.json', '.key', '.raw')):
+    if suffix and suffix not in ('.prv', '.json', '.key', '.raw'):
         return result(str_='Invalid key file type')
 
     if not is_filename_safe(upload.filename):
@@ -211,7 +211,7 @@ def do_upload(context):
     try:
         upload.save(upload_path) 
     except Exception as e:
-        return context.render_exception()
+        return context.render_exception(e)
 
     # this returns full path, can be changed to basepath only
     return result(str_=f'File successfully saved to "{upload_path}"')

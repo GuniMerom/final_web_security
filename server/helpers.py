@@ -69,9 +69,9 @@ class Context:
             params['is_admin'] = self.is_admin
         return bottle.template(tmpl_name, **params)
 
-    def render_exception(self):
+    def render_exception(self, e):
         trace = traceback.format_exc()
-        return context.render_template('error', title=type(e).__name__, value=trace)
+        return self.render_template('error', title=type(e).__name__, value=trace)
 
 def context_wrapper(*, db_path, debug=False):
     def wrapper(func):
@@ -90,6 +90,6 @@ def context_wrapper(*, db_path, debug=False):
             except Exception as e:
                 if not context.debug or srvcfg.CTF_DIFFICULTY >= 3:
                     raise
-                return context.render_exception()
+                return context.render_exception(e)
         return result
     return wrapper

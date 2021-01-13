@@ -3,4 +3,4 @@
 ##DOC## 2           - SQLI is required for admin, but query visible in stack trace
 ##DOC## 3           - No stack trace
 ##DOC## 4 (Hardest) - os module not available in the eval vulnerability
-CTF_DIFFICULTY = 3 
+CTF_DIFFICULTY = 2 
