@@ -21,10 +21,9 @@ ADMIN_USERNAME = 'admin'
 logger = logging.getLogger('myapp')
 logger.setLevel(logging.INFO)
 file_handler = logging.FileHandler(LOG_FILE)
-formatter = logging.Formatter('%(msg)s')
 file_handler.setLevel(logging.DEBUG)
-file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
+logger.addHandler(logging.StreamHandler())
 
 # init upload folder
 if not os.path.exists(UPLOAD_DIR):
