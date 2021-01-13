@@ -159,12 +159,29 @@ def get_stats(context):
 
 	return context.render_template('stats', fcount=fcount)
 
+
+def file_name_suffix(fname):
+    return os.path.splitext(fname)[-1]
+
+
 # logic to prevent path traversal 
 def is_filename_safe(fname):
-    ##DOC## Path traversal with `foo/../<TRAVERSE_HERE>`
-    if fname[0:2] == '..' or fname[0:4] == './..':
-        return False
-    return True
+    if fname.startswith(os.sep) or fname.startswith('.'):
+        return True
+    parts = fname.split(os.sep)
+    depth = 0
+    for part in fname.split(os.sep):
+        if part == '':
+            continue
+        if part.startswith('..'):
+            depth -= 1
+            ##DOC## Can be traversed with ... (goes up twice, not once)
+        else:
+            depth += 1
+            ##DOC## Can be traversed with . (doesn't go down)
+        if depth < 0:
+            return True
+    return False
 
 
 @app.get('/upload')
@@ -182,8 +199,14 @@ def do_upload(context):
          return context.render_template('generic_str', **kwargs)
 
     upload = request.files.get('upload')
+
+    suffix = file_name_suffix(upload.filename)
+    if suffix and suffix not in ('.prv', '.json', '.key', '.raw')):
+        return result(str_='Invalid key file type')
+
     if not is_filename_safe(upload.filename):
         return result(str_='Traversal attempt detected')
+
     upload_path = os.path.join(UPLOAD_DIR, upload.filename)
     try:
         upload.save(upload_path) 
