@@ -1,5 +1,6 @@
 % rebase('base.tpl', title='Server Login')
-<div class="container position-absolute top-50 start-50 translate-middle" style="max-width: 512px">
+<div class="container position-absolute top-50 start-50 translate-middle bg-dark"
+     style="max-width: 512px; padding:20px; border-radius: 10px; border: 1px solid silver">
   <h1 class="text-center">천국의 문 v2.10.6</h1>
   <p class="text-center">시스템에 액세스하려면, 로그인 해주세요.</p>
 
