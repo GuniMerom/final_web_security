@@ -10,7 +10,7 @@ import traceback
 
 def redirect_with_cookies(url, code=None, add_cookies=None, clear_cookies=None):
     if not code:
-        code = 303 if bottle.request.get('SERVER_PROTOCOL') == "HTTP/1.1" else 302
+        code = 303 if bottle.request.get('SERVER_PROTOCOL') == 'HTTP/1.1' else 302
     res = bottle.response.copy(cls=bottle.HTTPResponse)
     for cookie in (add_cookies or ()):
         name, val = cookie
@@ -18,7 +18,7 @@ def redirect_with_cookies(url, code=None, add_cookies=None, clear_cookies=None):
     for cookie in (clear_cookies or ()):
         res.delete_cookie(cookie)
     res.status = code
-    res.body = ""
+    res.body = ''
     res.set_header('Location', urllib.parse.urljoin(bottle.request.url, url))
     raise res
 
@@ -26,10 +26,10 @@ def redirect_with_cookies(url, code=None, add_cookies=None, clear_cookies=None):
 def make_app_logger(logger, filename):
     SCRIPT_NAME = os.path.split(filename)[1]
     def decorator(fn):
-        '''
+        """
         Wrap a Bottle request so that a log line is emitted after it's handled.
         (This decorator can be extended to take the desired logger as a param.)
-        '''
+        """
         @functools.wraps(fn)
         def result(*args, **kwargs):
             request_time = datetime.datetime.now()
@@ -37,13 +37,13 @@ def make_app_logger(logger, filename):
             request = bottle.request
             response = bottle.response
             # modify this to log exactly what you need:
-            logger.info('%s %s %s %s %s' % (request.remote_addr,
-                                            request_time,
-                                            request.method,
-                                            request.url,
-                                            response.status))
-            logger.info('Cookies: %s' % request.get_cookie('login'))
-            logger.info('Handeled by: \'%s\' in file: \'%s\'' %(fn.__name__, SCRIPT_NAME))
+            logger.info('%s %s %s %s %s', request.remote_addr,
+                                          request_time,
+                                          request.method,
+                                          request.url,
+                                          response.status)
+            logger.info('Cookies: %s', request.get_cookie('login'))
+            logger.info('Handeled by: "%s" in file: "%s"', fn.__name__, SCRIPT_NAME)
 
             return actual_response
         return result
@@ -69,6 +69,9 @@ class Context:
             params['is_admin'] = self.is_admin
         return bottle.template(tmpl_name, **params)
 
+    def render_exception(self):
+        trace = traceback.format_exc()
+        return context.render_template('error', title=type(e).__name__, value=trace)
 
 def context_wrapper(*, db_path, debug=False):
     def wrapper(func):
@@ -85,9 +88,8 @@ def context_wrapper(*, db_path, debug=False):
                 raise
             # Format real exceptions.
             except Exception as e:
-                if not context.debug or srvcfg.CTF_DIFFICULTY == 4:
+                if not context.debug or srvcfg.CTF_DIFFICULTY >= 3:
                     raise
-                trace = traceback.format_exc()
-                return context.render_template('error', title=type(e).__name__, value=trace)
+                return context.render_exception()
         return result
     return wrapper

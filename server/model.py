@@ -31,17 +31,17 @@ class DBLogic:
         self.initialize_db()
 
     def initialize_db(self):
-        self.db_connection.executescript('''
+        self.db_connection.executescript("""
             CREATE TABLE IF NOT EXISTS users (
                 user_id  INTEGER PRIMARY KEY,
                 username  TEXT,
                 password  TEXT,
                 full_name TEXT
             );
-        ''')
+        """)
 
 
-        self.db_connection.executescript('''
+        self.db_connection.executescript("""
             INSERT OR IGNORE INTO users VALUES (1, 'boss', sha1('Dancing in the dark'), 'Bruce Summersteen');
             INSERT OR IGNORE INTO users VALUES (2, 'edward', sha1('666'), 'Edward Hailden');
             INSERT OR IGNORE INTO users VALUES (3, 'alice', sha1('Into the flood again.'), 'Alice InRopes');
@@ -49,7 +49,7 @@ class DBLogic:
             INSERT OR IGNORE INTO users VALUES (5, 'system', '', 'Grape Galili');
             INSERT OR IGNORE INTO users VALUES (6, 'test', sha1('1234'), 'Testy McTestFace');
             INSERT OR IGNORE INTO users VALUES (7, 'admin', sha1('ReallyStr0nkP@ssw0rd'), 'System Administrator');
-        ''')
+        """)
 
 
     def select_scalar(self, *args, **kwargs):
@@ -60,7 +60,7 @@ class DBLogic:
     def login(self, username, password):
 
         match = self.select_scalar(
-            "SELECT * FROM users WHERE username = ? AND password = sha1(?)",
+            'SELECT * FROM users WHERE username = ? AND password = sha1(?)',
             (username, password,)
         )
         if match:
@@ -75,7 +75,7 @@ class DBLogic:
         ##DOC## Important - this must be a single line to show the query
         ##DOC## in the stacktrace!
         ##DOC## To perform an SQLI, do `') OR 1=1 ; --`
-        match = self.select_scalar("SELECT * FROM users where username = 'admin' AND password = sha1('%s')"%(password,))
+        match = self.select_scalar('SELECT * FROM users where username = "admin" AND password = sha1("%s")' % (password,))
         return True if match else False
 
     def validate_login(self, cookie):
@@ -88,7 +88,7 @@ class DBLogic:
         except:
             return False
         if self.select_scalar(
-            "SELECT * FROM users WHERE username = ?",
+            'SELECT * FROM users WHERE username = ?',
             (login,)
         ):
             return login
@@ -97,12 +97,12 @@ class DBLogic:
 
     def get_user_name(self, username):
         return self.select_scalar(
-            "SELECT full_name FROM users WHERE username = ?",
+            'SELECT full_name FROM users WHERE username = ?',
             (username,)
         )
 
     def get_user_id(self, username):
         return self.select_scalar(
-            "SELECT user_id FROM users WHERE username = ?",
+            'SELECT user_id FROM users WHERE username = ?',
             (username,)
         )

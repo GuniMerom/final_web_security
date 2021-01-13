@@ -1,12 +1,6 @@
-'''
-Here we set the CTF difficulty, where the options are ranging from 1-3 (1 = easiest, 3 = hardest)
-its direct affect is: 
-	1 = no SQL Injection vulnerability (admin is granted on click)
-	2 = SQL Injection with explicit query response
-	3 = SQL Injection with exception response (little information)
-	4 = Blind SQL Injection -  no response
-
-level 3 is recommended
-'''
-
+##DOC## This controls the CTF difficulty, where the options are:
+##DOC## 1 (Easiest) - Admin is granted on click (no need for SQLI)
+##DOC## 2           - SQLI is required for admin, but query visible in stack trace
+##DOC## 3           - No stack trace
+##DOC## 4 (Hardest) - os module not available in the eval vulnerability
 CTF_DIFFICULTY = 3 

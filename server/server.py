@@ -47,7 +47,7 @@ def login_required(function):
         login_cookie = bottle.request.get_cookie(login_cookie_name())
         login = context.db_logic.validate_login(login_cookie)
         if not login:
-            return bottle.template('login')
+            return context.render_template('login')
         context.username = login
         context.is_admin = is_admin(login)
         return function(context, *args, **kwargs)
@@ -63,8 +63,8 @@ def admin_cookie(username):
     return username+'Yes'
 
 def is_admin(username):
-    if srvcfg.CTF_DIFFICULTY == 1:
-            return True
+    if srvcfg.CTF_DIFFICULTY < 2:
+        return True
     return bottle.request.get_cookie(admin_cookie_name())==admin_cookie(username)
 
 def admin_required(function):
@@ -120,10 +120,6 @@ def login(db_logic):
     cookies_=None
     if ok:
         cookies_=[(login_cookie_name(),cookie)]
-#    return bottle.HTTPResponse(status=200, body="you logged in you will be redirected")
-
-#    return "you logged in you will be redirected"
-#    return index(bottle.request.POST.get('username'),db_logic)
     return helpers.redirect_with_cookies('/', add_cookies=cookies_)
 
 @app.get('/display')
@@ -139,16 +135,16 @@ def display_file(context):
         with open(fpath, 'rb') as f:
             return result(str_=f.read())
     except FileNotFoundError:
-        return result(str_="File not found")
+        return result(str_='File not found')
     except Exception as e:
-        return result(str_="Display ran into unknown error :(")
+        return result(str_='Display ran into unknown error :(')
 
 
 @app.get('/view_logs')
 @admin_required
 def download_newest(context):
-    
     return bottle.redirect('/display?fname=' + LOG_FILE_BASENAME)
+
 
 @app.get('/logout')
 def logout():
@@ -166,14 +162,16 @@ def get_stats(context):
 # logic to prevent path traversal 
 def is_filename_safe(fname):
     ##DOC## Path traversal with `foo/../<TRAVERSE_HERE>`
-    if fname[0:2] == ".." or fname[0:4] == "./..":
+    if fname[0:2] == '..' or fname[0:4] == './..':
         return False
     return True
+
 
 @app.get('/upload')
 @login_required
 def get_upload(context):
     return context.render_template('upload')
+
 
 @app.post('/upload', method='POST')
 @login_required
@@ -185,20 +183,22 @@ def do_upload(context):
 
     upload = request.files.get('upload')
     if not is_filename_safe(upload.filename):
-        return result(str_="Traversal attempt detected")
+        return result(str_='Traversal attempt detected')
     upload_path = os.path.join(UPLOAD_DIR, upload.filename)
     try:
         upload.save(upload_path) 
     except Exception as e:
-        return result(str_="An error has occured. Error: %s" % e)
+        return context.render_exception()
 
     # this returns full path, can be changed to basepath only
-    return result(str_="File successfully saved to '{0}'.".format(upload_path))
+    return result(str_=f'File successfully saved to "{upload_path}"')
+
 
 @app.get('/')
 @login_required
 def index(context):
     return context.render_template('index')
+
 
 @app.get('/static/<filename:path>')
 def static_resources(filename):
@@ -206,11 +206,8 @@ def static_resources(filename):
 
 
 def run():
-    ''' 
-    TODO:
-    to support https
-    https://stackoverflow.com/questions/44013107/how-to-make-bottle-server-https-python
-    '''
+    ##DOC## To support https see
+    ##DOC## https://stackoverflow.com/questions/44013107/how-to-make-bottle-server-https-python
     app.run(host='0.0.0.0', port=8000)
 
 
