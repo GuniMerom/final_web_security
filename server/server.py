@@ -41,16 +41,16 @@ def login_required(function):
     Additionally, make the username and database connection available to the
     function as its first two parameters.
     """
-    @helpers.db_required(DB_PATH)
     @functools.wraps(function)
-    def decorated(db_logic, *args, **kwargs):
-
+    @helpers.context_wrapper(db_path=DB_PATH)
+    def decorated(context, *args, **kwargs):
         login_cookie = bottle.request.get_cookie(login_cookie_name())
-
-        login = db_logic.validate_login(login_cookie)
+        login = context.db_logic.validate_login(login_cookie)
         if not login:
             return bottle.template('login')
-        return function(login, db_logic, *args, **kwargs)
+        context.username = login
+        context.is_admin = is_admin(login)
+        return function(context, *args, **kwargs)
     return decorated
 
 def admin_cookie_name():
@@ -67,21 +67,16 @@ def is_admin(username):
             return True
     return bottle.request.get_cookie(admin_cookie_name())==admin_cookie(username)
 
-def get_is_admin_str(username):
-    is_approved_admin = is_admin(username)
-    admin_str = "" if is_approved_admin else "not"
-    return admin_str
-
 def admin_required(function):
     """
     Verify the user is logged in and admin.
     """
     @login_required
     @functools.wraps(function)
-    def decorated(username, db_logic, *args, **kwargs):
-        if not is_admin(username):
-               return bottle.template("not_admin")
-        return function(username, db_logic, *args, **kwargs)
+    def decorated(context, *args, **kwargs):
+        if not context.is_admin:
+               return context.render_template('not_admin')
+        return function(context, *args, **kwargs)
     return decorated
 
 def not_admin_required(function):
@@ -90,33 +85,33 @@ def not_admin_required(function):
     """
     @login_required
     @functools.wraps(function)
-    def decorated(username, db_logic, *args, **kwargs):
-        if is_admin(username):
-               return bottle.template("already_admin")
-        return function(username, db_logic, *args, **kwargs)
+    def decorated(context, *args, **kwargs):
+        if context.is_admin:
+               return context.render_template('already_admin')
+        return function(context, *args, **kwargs)
     return decorated
 
 
 @app.get('/enable_admin')
 @not_admin_required
-def view_admin_page(username, db_logic):
-	return bottle.template('enable_admin')
+def view_admin_page(context):
+	return context.render_template('enable_admin')
 
 @app.post('/enable_admin')
 @not_admin_required
-@helpers.debug_wrapper
-def view_admin_page(username, db_logic):
-        cookies_ = None
+def view_admin_page(context):
+    context.debug = True
+    cookies_ = None
 
-        if db_logic.admin_login(
-            bottle.request.POST.get('password'),
-        ):
-            cookies_ = [(admin_cookie_name(), admin_cookie(username))]
-        return helpers.redirect_with_cookies('/', add_cookies=cookies_)
+    if context.db_logic.admin_login(
+        bottle.request.POST.get('password'),
+    ):
+        cookies_ = [(admin_cookie_name(), admin_cookie(context.username))]
+    return helpers.redirect_with_cookies('/', add_cookies=cookies_)
 
 
 @app.post('/login')
-@helpers.db_required(DB_PATH)
+@helpers.context_wrapper(db_path=DB_PATH)
 def login(db_logic):
     ok, cookie = db_logic.login(
         bottle.request.POST.get('username'),
@@ -133,23 +128,25 @@ def login(db_logic):
 
 @app.get('/display')
 @admin_required
-def display_file(username, db_logic):
+def display_file(context):
     fname = bottle.request.query['fname']
     fname = os.path.split(fname)[1] # only in current directory
 
     fpath = os.path.join(ROOT_DIR, fname)
-    try :
+    def result(**kwargs):
+        return context.render_template('generic_str', **kwargs)
+    try:
         with open(fpath, 'rb') as f:
-            return bottle.template('generic_str', str_=f.read())
+            return result(str_=f.read())
     except FileNotFoundError:
-        return bottle.template('generic_str', str_="File not found")
+        return result(str_="File not found")
     except Exception as e:
-        return bottle.template('generic_str', str_="Display ran into unknown error :(")
+        return result(str_="Display ran into unknown error :(")
 
 
 @app.get('/view_logs')
 @admin_required
-def download_newest(username, db_logic):
+def download_newest(context):
     
     return bottle.redirect('/display?fname=' + LOG_FILE_BASENAME)
 
@@ -161,10 +158,10 @@ def logout():
 
 @app.get('/stats')
 @login_required
-def get_stats(username, db_logic):
+def get_stats(context):
 	fcount = len(os.listdir(UPLOAD_DIR))
 
-	return bottle.template('stats', fcount=fcount)
+	return context.render_template('stats', fcount=fcount)
 
 # logic to prevent path traversal 
 def is_filename_safe(fname):
@@ -175,33 +172,33 @@ def is_filename_safe(fname):
 
 @app.get('/upload')
 @login_required
-def get_upload(username, db_logic):
-    return bottle.template('upload', username=username)
+def get_upload(context):
+    return context.render_template('upload')
 
 @app.post('/upload', method='POST')
 @login_required
-def do_upload(username, db_logic):
+def do_upload(context):
     request = bottle.request
+
+    def result(**kwargs):
+         return context.render_template('generic_str', **kwargs)
 
     upload = request.files.get('upload')
     if not is_filename_safe(upload.filename):
-        return bottle.template('generic_str', str_="Traversal attempt detected")
+        return result(str_="Traversal attempt detected")
     upload_path = os.path.join(UPLOAD_DIR, upload.filename)
     try:
         upload.save(upload_path) 
     except Exception as e:
-        return bottle.template('generic_str', str_="An error has occured. Error: %s" % e)
+        return result(str_="An error has occured. Error: %s" % e)
 
     # this returns full path, can be changed to basepath only
-    return bottle.template('generic_str', str_="File successfully saved to '{0}'.".format(upload_path))
-
+    return result(str_="File successfully saved to '{0}'.".format(upload_path))
 
 @app.get('/')
 @login_required
-def index(username, db_logic):
-    name = db_logic.get_user_name(username)
-    admin_str = get_is_admin_str(username)
-    return bottle.template('index', name=name, username=username, is_admin_str=admin_str)
+def index(context):
+    return context.render_template('index')
 
 @app.get('/static/<filename:path>')
 def static_resources(filename):

@@ -50,35 +50,44 @@ def make_app_logger(logger, filename):
     return decorator
 
 
-def db_required(db_path):
-    def decorator(function):
-        """
-        Make the database connection available to the function as its first
-        parameter.
-        """
-        @functools.wraps(function)
-        def decorated(*args, **kwargs):
+class Context:
+    def __init__(self, db_logic):
+        self.db_logic = db_logic
+        self.username = None
+        self.is_admin = None
+        self.debug = False
+
+    @property
+    def is_logged_in(self):
+        return self.username is not None and self.db_logic
+
+    def render_template(self, tmpl_name, **kwargs):
+        params = dict(kwargs)
+        if self.is_logged_in:
+            params['username'] = self.username
+            params['name'] = self.db_logic.get_user_name(self.username)
+            params['is_admin'] = self.is_admin
+        return bottle.template(tmpl_name, **params)
+
+
+def context_wrapper(*, db_path, debug=False):
+    def wrapper(func):
+        @functools.wraps(func)
+        def result(*args, **kwargs):
             with model.connect(db_path) as connection:
-                db_logic = model.DBLogic(connection)
-                db_logic.initialize_db()
-                return function(db_logic, *args, **kwargs)
-        return decorated
-    return decorator
-
-
-def debug_wrapper(func):
-    @functools.wraps(func)
-    def result(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        # Bottle returns all responses via Exceptions. Yuck :(
-        except bottle.HTTPResponse:
-            raise
-        # Format real exceptions.
-        except Exception as e:
-            if srvcfg.CTF_DIFFICULTY == 4:
-                raise Exception(query)
-            trace = traceback.format_exc()
-            return bottle.template('error', title=type(e).__name__, value=trace)
-    return result
-
+                context = Context(db_logic=model.DBLogic(connection))
+                context.db_logic.initialize_db()
+            context.debug = debug
+            try:
+                return func(context, *args, **kwargs)
+            # Bottle returns all responses via Exceptions. Yuck :(
+            except bottle.HTTPResponse:
+                raise
+            # Format real exceptions.
+            except Exception as e:
+                if not context.debug or srvcfg.CTF_DIFFICULTY == 4:
+                    raise
+                trace = traceback.format_exc()
+                return context.render_template('error', title=type(e).__name__, value=trace)
+        return result
+    return wrapper
