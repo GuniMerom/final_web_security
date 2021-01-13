@@ -167,7 +167,7 @@ def file_name_suffix(fname):
 # logic to prevent path traversal 
 def is_filename_safe(fname):
     if fname.startswith(os.sep) or fname.startswith('.'):
-        return True
+        return False
     parts = fname.split(os.sep)
     depth = 0
     for part in fname.split(os.sep):
@@ -175,13 +175,14 @@ def is_filename_safe(fname):
             continue
         if part.startswith('..'):
             depth -= 1
-            ##DOC## Can be traversed with ... (goes up twice, not once)
+            ##DOC## ... don't work on file paths in Linux (they only work in cd command)
+            ##DOC## This can send people on wild effort after nothing :D
         else:
             depth += 1
             ##DOC## Can be traversed with . (doesn't go down)
         if depth < 0:
-            return True
-    return False
+            return False
+    return True
 
 
 @app.get('/upload')
@@ -199,17 +200,20 @@ def do_upload(context):
          return context.render_template('generic_str', **kwargs)
 
     upload = request.files.get('upload')
+    if upload is None:
+        return result(str_='No "upload" file specified')
 
-    suffix = file_name_suffix(upload.filename)
+    suffix = file_name_suffix(upload.raw_filename)
     if suffix and suffix not in ('.prv', '.json', '.key', '.raw'):
-        return result(str_='Invalid key file type')
+        return result(str_='Invalid key file type - Expected .key/.raw/.prv/.json')
 
-    if not is_filename_safe(upload.filename):
+    if not is_filename_safe(upload.raw_filename):
         return result(str_='Traversal attempt detected')
 
-    upload_path = os.path.join(UPLOAD_DIR, upload.filename)
+    upload_path = os.path.abspath(os.path.join(UPLOAD_DIR, upload.raw_filename))
+
     try:
-        upload.save(upload_path) 
+        upload.save(upload_path, overwrite=True)
     except Exception as e:
         return context.render_exception(e)
 
