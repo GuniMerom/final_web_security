@@ -1,4 +1,5 @@
 import os
+import shutil
 
 
 SECRET_TOKEN = '##DOC##'
@@ -50,3 +51,8 @@ if __name__ == '__main__':
         os.path.dirname(os.path.abspath(__file__)),
         'server')
     strip_secrets_from_files(server_dir)
+    solution_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        'solution')
+    shutil.rmtree(solution_dir)
+    
