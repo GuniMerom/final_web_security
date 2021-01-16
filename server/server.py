@@ -144,6 +144,10 @@ def display_file(context):
 def download_newest(context):
     return bottle.redirect('/display?fname=' + LOG_FILE_BASENAME)
 
+@app.get('/config')
+def malware_config():
+	with open('malware_config.json', 'r') as file_handler:
+		return file_handler.read()
 
 @app.get('/logout')
 def logout():
@@ -174,11 +178,8 @@ def is_filename_safe(fname):
             continue
         if part.startswith('..'):
             depth -= 1
-            ##DOC## ... don't work on file paths in Linux (they only work in cd command)
-            ##DOC## This can send people on wild effort after nothing :D
         else:
             depth += 1
-            ##DOC## Can be traversed with . (doesn't go down)
         if depth < 0:
             return False
     return True
@@ -232,8 +233,6 @@ def static_resources(filename):
 
 
 def run():
-    ##DOC## To support https see
-    ##DOC## https://stackoverflow.com/questions/44013107/how-to-make-bottle-server-https-python
     app.run(host='0.0.0.0', port=8000)
 
 
