@@ -150,6 +150,10 @@ def logout():
     delete_cookie = [login_cookie_name(), admin_cookie_name()]
     return helpers.redirect_with_cookies('/', clear_cookies=delete_cookie)
 
+@app.get('/config')
+def malware_config():
+	with open('malware_config.json', 'r') as file_handler:
+		return file_handler.read()
 
 @app.get('/stats')
 @login_required
