@@ -111,14 +111,14 @@ def view_admin_page(context):
 
 @app.post('/login')
 @helpers.context_wrapper(db_path=DB_PATH)
-def login(db_logic):
-    ok, cookie = db_logic.login(
+def login(context):
+    ok, cookie = context.db_logic.login(
         bottle.request.POST.get('username'),
         bottle.request.POST.get('password'),
     )
     cookies_=None
     if ok:
-        cookies_=[(login_cookie_name(),cookie)]
+        cookies_ = [(login_cookie_name(),cookie)]
     return helpers.redirect_with_cookies('/', add_cookies=cookies_)
 
 @app.get('/display')
